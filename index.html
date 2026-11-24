@@ -148,6 +148,17 @@
   <!-- EXPLORE -->
   <section id="tab-explore" class="hidden">
     <div class="card">
+      <h2>Probe (sweep a byte)</h2>
+      <p class="note" style="margin-top:0">Sends the template over and over, with <code>{n}</code> stepping through every value in the range, and records which ones get a reply. Watch the device too: tap <b>That worked</b> if it moves.</p>
+      <div class="row"><label>Channel</label><select id="pChan"><option value="">Connect first</option></select></div>
+      <div class="row"><label>Template</label><input type="text" id="pTpl" value="55 {n} 00 00 00 00 00" spellcheck="false" autocapitalize="off"></div>
+      <div class="row"><label>From / to</label><input type="text" id="pFrom" value="00" style="max-width:70px"><input type="text" id="pTo" value="FF" style="max-width:70px"><span class="note">hex</span></div>
+      <div class="row"><label>Gap (ms)</label><input type="number" id="pGap" value="400" min="100" max="5000"></div>
+      <div class="btnrow"><button id="pStart">Start probe</button><button id="pYes" disabled>That worked</button><button id="pStop" disabled>Stop</button></div>
+      <p class="note" id="pNow" style="margin-bottom:6px"></p>
+      <div class="log" id="pOut" style="height:140px"></div>
+    </div>
+    <div class="card">
       <h2>Services &amp; channels</h2>
       <p class="note" style="margin-top:0">Everything the device exposes. Read values, listen for replies, or send your own bytes. Tap <b>Use for control</b> on a channel to drive it from the Control tab.</p>
       <div id="tree"><span class="note">Connect a device to see what it offers.</span></div>
@@ -433,7 +444,7 @@
   }
 
   function onDisconnect() {
-    setStatus(false, 'Disconnected'); target = null; chars = []; lastSent = null;
+    setStatus(false, 'Disconnected'); target = null; chars = []; lastSent = null; pRun++;
     stopAuto(); log('Device disconnected'); renderChanSel(); renderInfo();
   }
 
@@ -457,15 +468,20 @@
           const v = await readChar(x, true);
           if (v) {
             const sc = short(c.uuid);
-            if (sc === '2a19') info.batt = v[0] + '%';
+            if (sc === '2a19') info.batt = v[0] + '% (chip value, often wrong — trust the official app)';
             if (sc === '2a29') info.maker = new TextDecoder().decode(v);
             if (sc === '2a24') info.model = new TextDecoder().decode(v);
           }
         }
         c.addEventListener('characteristicvaluechanged', ev => {
           const v = new Uint8Array(ev.target.value.buffer);
-          x.value = v; log('←', short(c.uuid), hex(v), JSON.stringify(ascii(v)));
-          if (short(c.uuid) === '2a19') { $('iBatt').textContent = v[0] + '%'; }
+          x.value = v;
+          // Say which write this reply most likely answers, so cause and effect are easy to spot.
+          const ago = lastTx ? Date.now() - lastTx.t : null;
+          const cause = lastTx && ago < 1500 ? `  [${ago}ms after ${lastTx.ch}: ${lastTx.h}]` : '';
+          log('←', short(c.uuid), hex(v), JSON.stringify(ascii(v)) + cause);
+          if (onReply) onReply(x, v);
+          if (short(c.uuid) === '2a19') { $('iBatt').textContent = v[0] + '% (chip value, often wrong — trust the official app)'; }
           paintValue(x);
         });
         // Listen on everything that can reply, so device responses show up in the log.
@@ -514,6 +530,7 @@
     sel.innerHTML = w.length ? '' : `<option value="">${device && device.gatt.connected ? 'No writable channels' : 'Connect first'}</option>`;
     w.forEach(x => sel.insertAdjacentHTML('beforeend', `<option value="${x.key}">${short(x.c.uuid)}${label(x.c.uuid) ? ' · ' + label(x.c.uuid) : ''}${x.prot ? ' (protected)' : ''}</option>`));
     if (target) sel.value = target.key;
+    renderProbeChan();
   }
   $('chanSel').onchange = e => {
     const x = chars.find(c => c.key === e.target.value);
@@ -585,9 +602,11 @@
 
   // One GATT operation at a time; browsers reject overlapping writes.
   let gattBusy = Promise.resolve();
+  let lastTx = null, onReply = null;
   function writeTo(x, u8, mode) {
     const run = async () => {
       const c = x.c, p = c.properties;
+      lastTx = { ch: short(c.uuid).slice(0, 8), h: hex(u8), t: Date.now() };
       const noResp = mode === 'noresp' || (mode === 'auto' && p.writeWithoutResponse && !p.write);
       const tries = noResp
         ? [c.writeValueWithoutResponse, c.writeValue, c.writeValueWithResponse]
@@ -690,7 +709,7 @@
   };
 
   let autoRun = 0;
-  function stopAuto() { if (!autoRun) return; autoRun = 0; testing = false; $('autoBox').classList.add('hidden'); }
+  function stopAuto() { if (!autoRun) return; autoRun = 0; testing = false; $('autoBox').classList.add('hidden'); keepAwake(false); }
   $('autoStop').onclick = () => { const saved = autoSaved; stopAuto(); if (saved) { cfg = saved; target = chars.find(x => x.key === cfg.charKey) || target; showCfg(); renderChanSel(); } lastSent = null; sendLevel(0, true); log('Auto-find stopped'); };
   let autoHit = null, autoSaved = null, skipChan = false;
   $('autoSkip').onclick = () => { skipChan = true; log('Auto-find: skipping to next channel'); };
@@ -708,7 +727,7 @@
     if (!cands.length) { alert('No safe writable channels found. Check the Explore tab.'); return; }
     // Current channel first, then the rest.
     cands.sort((a, b) => (b === target) - (a === target));
-    const run = ++autoRun; testing = true; autoSaved = { ...cfg };
+    const run = ++autoRun; testing = true; autoSaved = { ...cfg }; keepAwake(true);
     $('autoBox').classList.remove('hidden');
     log(`Auto-find: ${cands.length} channel(s) × ${PRESETS.length} formats`);
     const total = cands.length * PRESETS.length; let n = 0;
@@ -730,6 +749,76 @@
       await sleep(300);
     } }
     if (autoRun === run) { stopAuto(); log('Auto-find: nothing confirmed. Copy the report from the Log tab to dig further.'); alert('Went through every format. Nothing confirmed. The log has details.'); }
+  };
+
+  // ---------- keep the screen on during long tests ----------
+  // iPhones pause the page when the screen locks, which stops a test midway.
+  let wake = null;
+  async function keepAwake(on) {
+    try {
+      if (on && 'wakeLock' in navigator && !wake) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); }
+      else if (!on && wake) { await wake.release(); wake = null; }
+    } catch (e) { log('Keep-awake not available here:', errMsg(e)); }
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && (autoRun || probing)) keepAwake(true); });
+
+  // ---------- probe: sweep one byte and record replies ----------
+  let pRun = 0, pCur = null, probing = false;
+  const pOut = $('pOut');
+  ['pTpl', 'pFrom', 'pTo', 'pGap'].forEach(id => { const v = store.get(id, null); if (v != null) $(id).value = v; $(id).onchange = e => store.set(id, e.target.value); });
+  function renderProbeChan() {
+    const sel = $('pChan');
+    const w = chars.filter(x => x.writable && !x.prot);
+    sel.innerHTML = w.length ? '' : `<option value="">${device && device.gatt.connected ? 'No safe channels' : 'Connect first'}</option>`;
+    w.forEach(x => sel.insertAdjacentHTML('beforeend', `<option value="${x.key}">${short(x.c.uuid).slice(0, 8)}</option>`));
+    const saved = store.get('pChan', ''), cc = w.find(x => short(x.c.uuid) === 'cc02');
+    sel.value = w.some(x => x.key === saved) ? saved : (cc || w[0] || { key: '' }).key;
+  }
+  $('pChan').onchange = e => store.set('pChan', e.target.value);
+  function probeButtons(on) { probing = on; $('pStart').disabled = on; $('pYes').disabled = !on; $('pStop').disabled = !on; }
+  $('pStop').onclick = () => { pRun++; log('Probe stopped'); };
+  $('pYes').onclick = () => {
+    const what = pCur; pRun++;
+    log('PROBE: device reacted around', what);
+    pOut.textContent += `\n>>> You saw a reaction around: ${what}\n`;
+    alert('Noted: ' + what + '\nIt may have been this one or the one just before. Copy the report from the Log tab and send it.');
+  };
+  $('pStart').onclick = async () => {
+    const x = chars.find(c => c.key === $('pChan').value);
+    if (!x) { alert('Connect a device first.'); return; }
+    const tpl = $('pTpl').value.trim();
+    if (!tpl.includes('{n}')) { alert('Put {n} in the template where the changing byte goes.'); return; }
+    const a = parseInt($('pFrom').value, 16), b = parseInt($('pTo').value, 16);
+    if (isNaN(a) || isNaN(b) || a < 0 || b > 255 || a > b) { alert('From and to must be hex 00–FF, with from ≤ to.'); return; }
+    const gap = Math.max(100, +$('pGap').value || 400);
+    let sample; try { sample = parseHex(tpl.replace(/\{n\}/g, '00')); } catch (e) { alert('Template error: ' + errMsg(e)); return; }
+    stopAuto(); setSpeed(0); testing = true; probeButtons(true); keepAwake(true);
+    const run = ++pRun, hits = new Map();
+    pOut.textContent = '';
+    onReply = (rx, v) => {
+      if (!pCur) return;
+      const s = short(rx.c.uuid).slice(0, 8) + ': ' + hex(v);
+      if (!hits.has(pCur)) hits.set(pCur, new Set());
+      hits.get(pCur).add(s);
+      pOut.textContent += `${pCur}  ←  ${s}\n`; pOut.scrollTop = pOut.scrollHeight;
+    };
+    log(`Probe: "${tpl}" on ${short(x.c.uuid)}, ${a.toString(16)}–${b.toString(16)}, gap ${gap}ms`);
+    let sent = 0;
+    for (let n = a; n <= b; n++) {
+      if (pRun !== run) break;
+      const u8 = parseHex(tpl.replace(/\{n\}/g, n.toString(16).padStart(2, '0')));
+      pCur = hex(u8);
+      $('pNow').textContent = `Sending ${n - a + 1} of ${b - a + 1}: ${pCur}`;
+      try { await writeTo(x, u8, 'auto'); sent++; }
+      catch (e) { log('Probe write failed:', pCur, errMsg(e)); if (!device || !device.gatt.connected) break; }
+      await sleep(gap);
+    }
+    await sleep(600); // let late replies land
+    onReply = null; pCur = null; testing = false; probeButtons(false); keepAwake(false);
+    const summary = `Probe done: ${sent} sent, ${hits.size} got a reply.`;
+    $('pNow').textContent = summary; pOut.textContent += '\n' + summary + '\n';
+    log(summary);
+    for (const [k, set] of hits) log('  reply to', k, '→', [...set].join(' | '));
   };
 
   // ---------- log buttons ----------
