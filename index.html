@@ -93,6 +93,11 @@
   <div class="card">
     <div class="row" style="margin-top:0"><label>Only show</label><input type="text" id="nameFilter" placeholder="device name, e.g. XiYu (blank = all)" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
     <button class="primary" id="connectBtn">Connect device</button>
+    <button id="scanBtn" style="width:100%;margin-top:10px">Scan nearby (strongest signal first)</button>
+    <div id="scanBox" class="hidden" style="margin-top:10px">
+      <p class="note" id="scanNote" style="margin:0 0 8px">Scanning… hold the phone next to the device. Tap one to pick it.</p>
+      <div id="scanList" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
     <dl class="info hidden" id="info" style="margin-top:12px">
       <dt>Name</dt><dd id="iName">–</dd>
       <dt>Battery</dt><dd id="iBatt">–</dd>
@@ -340,7 +345,61 @@
     $('connectBtn').textContent = on ? 'Disconnect' : 'Connect device';
   }
 
-  $('connectBtn').onclick = () => (device && device.gatt.connected) ? disconnect() : connect();
+  $('connectBtn').onclick = () => { stopScan(); (device && device.gatt.connected) ? disconnect() : connect(); };
+
+  // ---------- nearby scan, sorted by signal strength ----------
+  // The browser's own device picker can't be reordered, so this lists advertisements itself.
+  // Needs the scanning API, which only some browsers have.
+  let scan = null; const seen = new Map(); let scanPaint = null;
+  function stopScan() {
+    if (scan) { try { scan.stop(); } catch {} scan = null; }
+    if (scanPaint) { clearInterval(scanPaint); scanPaint = null; }
+    $('scanBtn').textContent = 'Scan nearby (strongest signal first)';
+  }
+  const bars = r => r >= -55 ? '▮▮▮▮' : r >= -67 ? '▮▮▮▯' : r >= -78 ? '▮▮▯▯' : r >= -88 ? '▮▯▯▯' : '▯▯▯▯';
+  function paintScan() {
+    const now = Date.now();
+    const list = [...seen.values()].filter(d => now - d.t < 8000).sort((a, b) => b.rssi - a.rssi);
+    const box = $('scanList'); box.innerHTML = '';
+    if (!list.length) { box.innerHTML = '<span class="note">Nothing heard yet…</span>'; return; }
+    list.forEach(d => {
+      const b = document.createElement('button');
+      b.style.cssText = 'display:flex;justify-content:space-between;text-align:left;gap:10px';
+      b.innerHTML = `<span>${d.name ? d.name.replace(/[<>&]/g, '') : '<i style="color:var(--dim)">(no name)</i>'}</span><span style="font-family:ui-monospace,Menlo,monospace;color:var(--accent)">${bars(d.rssi)} ${d.rssi}</span>`;
+      b.onclick = () => {
+        if (!d.name) { alert('This one has no name, so the picker can\'t be narrowed to it. Clear the "Only show" box and look for an unnamed entry.'); return; }
+        $('nameFilter').value = d.name; store.set('nameFilter', d.name);
+        stopScan(); $('scanBox').classList.add('hidden');
+        log('Picked', d.name, 'at', d.rssi, 'dBm from the scan');
+        connect();
+      };
+      box.appendChild(b);
+    });
+  }
+  $('scanBtn').onclick = async () => {
+    if (scan) { stopScan(); return; }
+    $('scanBox').classList.remove('hidden');
+    if (!navigator.bluetooth || !navigator.bluetooth.requestLEScan) {
+      $('scanNote').textContent = 'This browser can\'t list signal strength. The device picker sorts itself, so use the on/off test: note the list with the device off, then on.';
+      $('scanList').innerHTML = ''; return;
+    }
+    seen.clear(); $('scanNote').textContent = 'Scanning… hold the phone next to the device. Strongest signal is on top. Tap one to connect.';
+    try {
+      scan = await navigator.bluetooth.requestLEScan({ acceptAllAdvertisements: true, keepRepeatedDevices: true });
+    } catch (e) { $('scanNote').textContent = 'Scan not allowed: ' + errMsg(e); log('Scan failed:', errMsg(e)); return; }
+    $('scanBtn').textContent = 'Stop scan';
+    paintScan(); scanPaint = setInterval(paintScan, 1000);
+    setTimeout(() => { if (scan) stopScan(); }, 30000);
+  };
+  if (navigator.bluetooth && navigator.bluetooth.addEventListener) {
+    navigator.bluetooth.addEventListener('advertisementreceived', ev => {
+      if (ev.rssi == null) return;
+      const key = ev.device.id, prev = seen.get(key);
+      // Smooth the reading a little so the order doesn't jump around.
+      const rssi = prev ? Math.round(prev.rssi * 0.6 + ev.rssi * 0.4) : ev.rssi;
+      seen.set(key, { name: ev.device.name || ev.name || (prev && prev.name) || '', rssi, t: Date.now() });
+    });
+  }
 
   async function connect() {
     if (!navigator.bluetooth) { alert('Bluetooth is not available in this browser. Use Chrome, or Bluefy on iPhone.'); return; }
