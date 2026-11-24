@@ -175,7 +175,7 @@
     <div class="card">
       <h2>Log</h2>
       <div class="log" id="log"></div>
-      <div class="btnrow"><button id="copyBtn">Copy report</button><button id="clearBtn">Clear</button></div>
+      <div class="btnrow"><button id="copyBtn">Copy &amp; save report</button><button id="clearBtn">Clear</button></div>
       <p class="note">This page has no tracking and makes no network requests. Everything stays between this browser and the device.</p>
     </div>
   </section>
@@ -822,16 +822,39 @@
   };
 
   // ---------- log buttons ----------
-  $('copyBtn').onclick = async () => {
+  // One tap: copies the report, then opens the share sheet so it can go straight into Notes
+  // (or Files, Messages…). Where sharing isn't available, it downloads a .txt instead.
+  $('copyBtn').onclick = () => {
+    const now = new Date();
     const head = [
-      'Link Lab report', new Date().toISOString(), navigator.userAgent,
+      'Link Lab report', now.toISOString(), navigator.userAgent,
       'Device: ' + (device ? (device.name || '(unnamed)') : 'none'),
       'Control: ' + (target ? target.c.uuid : 'none') + ' · template ' + cfg.template + ' · max ' + cfg.max + ' · mode ' + cfg.wmode, '',
     ].join('\n');
     const text = head + LOG.join('\n');
-    try { await navigator.clipboard.writeText(text); alert('Report copied.'); }
-    catch { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); alert('Report copied.'); }
+    // Copy synchronously first so the tap still counts as a user action for the share sheet.
+    const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:-1000px;opacity:0'; document.body.appendChild(ta);
+    ta.select(); ta.setSelectionRange(0, text.length);
+    let copied = false; try { copied = document.execCommand('copy'); } catch {}
+    ta.remove();
+    const title = 'Link Lab report ' + now.toLocaleString();
+    if (navigator.share) {
+      navigator.share({ title, text })
+        .then(() => log('Report shared.'))
+        .catch(e => { if (e && e.name !== 'AbortError') { log('Share failed:', errMsg(e)); saveTxt(text, now); } else if (copied) alert('Report copied.'); });
+      return;
+    }
+    saveTxt(text, now);
+    if (copied) alert('Report copied, and saved as a text file.');
   };
+  function saveTxt(text, now) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+    a.download = 'link-lab-report-' + now.toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.txt';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
   $('clearBtn').onclick = () => { LOG.length = 0; logEl.textContent = ''; };
 
   log('Ready.', navigator.bluetooth ? 'Bluetooth available.' : 'Bluetooth NOT available in this browser.');
