@@ -91,6 +91,7 @@
   </div>
 
   <div class="card">
+    <div class="row" style="margin-top:0"><label>Only show</label><input type="text" id="nameFilter" placeholder="device name, e.g. XiYu (blank = all)" autocapitalize="off" autocorrect="off" spellcheck="false"></div>
     <button class="primary" id="connectBtn">Connect device</button>
     <dl class="info hidden" id="info" style="margin-top:12px">
       <dt>Name</dt><dd id="iName">–</dd>
@@ -308,6 +309,8 @@
   $('template').oninput = e => { cfg.template = e.target.value; cfg.preset = 'custom'; presetSel.value = 'custom'; saveCfg(); lastSent = null; };
   $('maxv').oninput = e => { cfg.max = Math.max(1, +e.target.value || 1); saveCfg(); lastSent = null; };
   $('wmode').onchange = e => { cfg.wmode = e.target.value; saveCfg(); };
+  $('nameFilter').value = store.get('nameFilter', 'XiYu');
+  $('nameFilter').onchange = e => store.set('nameFilter', e.target.value.trim());
   $('extraSvc').value = store.get('extraSvc', '');
   $('extraSvc').onchange = e => store.set('extraSvc', e.target.value.trim());
 
@@ -344,8 +347,12 @@
     const services = [...new Set(COMMON_SERVICES.map(full))];
     const extra = store.get('extraSvc', '');
     extra.split(/[\s,]+/).filter(Boolean).forEach(u => services.push(full(u)));
+    // A name filter keeps the picker short; blank shows every nearby device.
+    const nf = $('nameFilter').value.trim();
+    const opts = nf ? { filters: [{ namePrefix: nf }], optionalServices: services }
+                    : { acceptAllDevices: true, optionalServices: services };
     let picked;
-    try { picked = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: services }); }
+    try { picked = await navigator.bluetooth.requestDevice(opts); }
     catch (e) { log('Device picker closed:', errMsg(e)); return; }
     device = picked;
     cfg = { ...DEFAULT_CFG, ...store.get(cfgKey(), {}) }; showCfg();
@@ -354,6 +361,8 @@
     try {
       await device.gatt.connect();
       log('Connected to', device.name || '(unnamed)', 'id', device.id);
+      // Remember this device's name so next time the picker only lists it.
+      if (device.name && !$('nameFilter').value.trim()) { $('nameFilter').value = device.name; store.set('nameFilter', device.name); }
       await discover();
       setStatus(true, device.name || 'Connected');
     } catch (e) { log('Connect failed:', errMsg(e)); setStatus(false, 'Failed — try again'); }
