@@ -61,6 +61,7 @@
   .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .rh { text-align: left; padding: 10px 12px; }
   .rh b { display: block; font-size: 15px; } .rh span { font-size: 12px; color: var(--dim); }
+  #patterns button.on { border-color: var(--accent); background: #12332f; }
   .rh.active { border-color: var(--accent); background: #12332f; }
   .row { display: flex; gap: 10px; align-items: center; margin: 10px 0; }
   .row label { flex: 0 0 96px; font-size: 14px; color: var(--dim); }
@@ -125,6 +126,12 @@
       </div>
     </div>
     <button class="stop" id="stopBtn">STOP</button>
+    <div class="card hidden" id="patCard" style="margin-top:14px">
+      <h2>Built-in patterns</h2>
+      <p class="note" style="margin-top:0">Patterns stored in the device itself. Tap one to start it. Moving the level slider takes over again.</p>
+      <div class="steps" id="patterns"></div>
+      <button id="patOff" style="width:100%;margin-top:8px">Pattern off</button>
+    </div>
     <div class="card" style="margin-top:14px">
       <h2>Rhythm</h2>
       <div class="grid" id="rhythms"></div>
@@ -257,6 +264,10 @@
 
   // ---------- presets ----------
   const PRESETS = [
+    // XiYu format, taken from its official app: 0A 02 40 <level 0–10> = motor 1, 41 <level> = motor 2. Sent on EE02.
+    { id: 'xy12', name: 'XiYu: both motors (0–10)', template: '0A 02 40 {v} 41 {v}', max: 10 },
+    { id: 'xy1',  name: 'XiYu: motor 1 (0–10)', template: '0A 02 40 {v}', max: 10 },
+    { id: 'xy2',  name: 'XiYu: motor 2 (0–10)', template: '0A 02 41 {v}', max: 10 },
     { id: 'byte255', name: 'Single byte 0–255', template: '{v}', max: 255 },
     { id: 'byte100', name: 'Single byte 0–100', template: '{v}', max: 100 },
     { id: 'byte20',  name: 'Single byte 0–20',  template: '{v}', max: 20 },
@@ -318,11 +329,12 @@
   function showCfg() {
     presetSel.value = PRESETS.some(p => p.id === cfg.preset) ? cfg.preset : 'custom';
     $('template').value = cfg.template; $('maxv').value = cfg.max; $('wmode').value = cfg.wmode;
+    showPatterns();
   }
   function applyPreset(p) { cfg.preset = p.id; cfg.template = p.template; cfg.max = p.max; showCfg(); lastSent = null; }
   showCfg();
   presetSel.onchange = () => { const p = PRESETS.find(x => x.id === presetSel.value); if (p) applyPreset(p); else cfg.preset = 'custom'; saveCfg(); };
-  $('template').oninput = e => { cfg.template = e.target.value; cfg.preset = 'custom'; presetSel.value = 'custom'; saveCfg(); lastSent = null; };
+  $('template').oninput = e => { cfg.template = e.target.value; cfg.preset = 'custom'; presetSel.value = 'custom'; saveCfg(); lastSent = null; showPatterns(); };
   $('maxv').oninput = e => { cfg.max = Math.max(1, +e.target.value || 1); saveCfg(); lastSent = null; };
   $('wmode').onchange = e => { cfg.wmode = e.target.value; saveCfg(); };
   $('nameFilter').value = store.get('nameFilter', 'XiYu');
@@ -490,6 +502,11 @@
     }
     log(`Found ${svcs.length} services, ${chars.length} channels`);
     if (!svcs.length) log('No services visible. Add the device\'s service UUID under Explore → Missing a service, then reconnect.');
+    // Known device: XiYu takes the 0A 02 format on EE02. Set it up once; later changes by hand are kept.
+    if (/^xiyu/i.test(device.name || '') && !cfg.xyAuto) {
+      const ee02 = chars.find(x => x.writable && short(x.c.uuid) === 'ee02');
+      if (ee02) { applyPreset(PRESETS[0]); cfg.charKey = ee02.key; cfg.wmode = 'auto'; cfg.xyAuto = 1; saveCfg(); log('Recognized XiYu: using EE02 with', cfg.template); }
+    }
     target = chars.find(x => x.key === cfg.charKey && x.writable)
           || chars.find(x => x.writable && !x.prot && short(x.c.uuid) === '6e400002-b5a3-f393-e0a9-e50e24dcca9e')
           || chars.find(x => x.writable && !x.prot && short(x.svc) !== '180f')
@@ -692,7 +709,27 @@
     sendLevel(level);
   }, 50);
 
-  function stopAll() { setSpeed(0); stopAuto(); lastSent = null; sendLevel(0, true); log('STOP'); }
+  function isXy() { return /^0A 0?2 4[01]/i.test(cfg.template.trim()); }
+  function stopAll() {
+    setSpeed(0); stopAuto(); lastSent = null; sendLevel(0, true);
+    if (isXy() && target) writeTo(target, new Uint8Array([0x0a, 0x01, 0x00]), cfg.wmode).catch(() => {});
+    log('STOP');
+  }
+  // ---------- built-in patterns (XiYu: 0A 01 NN, 0A 01 00 = off) ----------
+  for (let n = 1; n <= 10; n++) {
+    const b = document.createElement('button'); b.textContent = n;
+    b.onclick = () => sendPattern(n);
+    $('patterns').appendChild(b);
+  }
+  $('patOff').onclick = () => sendPattern(0);
+  async function sendPattern(n) {
+    if (!target) { alert('Connect first.'); return; }
+    setSpeed(0); lastSent = hex(buildCommand(0)); // don't let the level loop cancel the pattern
+    const u8 = new Uint8Array([0x0a, 0x01, n]);
+    try { await writeTo(target, u8, cfg.wmode); log('→ pattern', n || 'off', hex(u8)); } catch (e) { log('✗ pattern failed:', errMsg(e)); }
+    document.querySelectorAll('#patterns button').forEach((x, i) => x.classList.toggle('on', i + 1 === n));
+  }
+  function showPatterns() { $('patCard').classList.toggle('hidden', !isXy()); }
   $('stopBtn').onclick = stopAll;
   // Stop when the page is hidden or closed, so nothing is left running.
   document.addEventListener('visibilitychange', () => { if (document.hidden) { setSpeed(0); sendLevel(0, true); } });
