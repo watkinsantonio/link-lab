@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1418">
+<meta name="robots" content="noindex">
+<title>Link Lab</title>
+<style>
+  :root {
+    --bg: #0e1418; --card: #172128; --line: #263540; --text: #eef4f6; --dim: #8fa3ad;
+    --accent: #2ec5b6; --accent2: #3b8bff; --ok: #3ad29f; --warn: #ffb547; --bad: #ff6b7d;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 16px 16px calc(40px + env(safe-area-inset-bottom)); }
+  header { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 16px; }
+  h1 { font-size: 22px; margin: 0; }
+  .status { font-size: 13px; color: var(--dim); display: flex; align-items: center; gap: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #555; }
+  .dot.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); margin: 0 0 12px; font-weight: 600; }
+  button, select, input { font: inherit; color: var(--text); }
+  button { background: #22303a; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; cursor: pointer; }
+  button:active { transform: scale(.97); }
+  button:disabled { opacity: .4; cursor: default; transform: none; }
+  button.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); border: 0; font-weight: 600; width: 100%; padding: 14px; color: #021; }
+  button.stop { background: #3a1620; border-color: #6b2434; color: #ff9fae; width: 100%; font-weight: 700; padding: 16px; font-size: 18px; }
+  button.small { padding: 6px 10px; font-size: 13px; border-radius: 9px; }
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: #111a20; padding: 5px; border-radius: 14px; margin-bottom: 14px; }
+  .tabs button { border: 0; background: transparent; color: var(--dim); padding: 10px 0; }
+  .tabs button.on { background: var(--card); color: var(--text); font-weight: 600; }
+  .info { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 14px; }
+  .info dt { color: var(--dim); } .info dd { margin: 0; word-break: break-all; }
+  .svc { border: 1px solid var(--line); border-radius: 14px; margin-bottom: 10px; overflow: hidden; }
+  .svc > summary { list-style: none; padding: 10px 12px; cursor: pointer; background: #111a20; font-size: 14px; }
+  .svc > summary::-webkit-details-marker { display: none; }
+  .svc > summary b { font-family: ui-monospace, Menlo, monospace; }
+  .tag { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 99px; background: #22303a; color: var(--dim); margin-left: 6px; vertical-align: 1px; }
+  .tag.prot { background: #3a2a10; color: var(--warn); }
+  .tag.ctl { background: #0f3a35; color: var(--accent); }
+  .chr { padding: 10px 12px; border-top: 1px solid var(--line); }
+  .chr .uuid { font: 12px/1.35 ui-monospace, Menlo, monospace; word-break: break-all; }
+  .chr .val { font: 12px/1.35 ui-monospace, Menlo, monospace; color: var(--accent); margin: 6px 0; word-break: break-all; min-height: 1em; }
+  .chr .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .chr .wr { display: flex; gap: 6px; margin-top: 6px; }
+  .chr .wr input { flex: 1; min-width: 0; background: #0b1115; border: 1px solid var(--line); border-radius: 9px; padding: 6px 8px; font: 13px ui-monospace, Menlo, monospace; }
+  .chr .wr select { background: #0b1115; border: 1px solid var(--line); border-radius: 9px; padding: 0 6px; font-size: 13px; }
+  .meter { height: 120px; display: flex; align-items: flex-end; gap: 3px; margin-bottom: 12px; }
+  .meter i { flex: 1; background: linear-gradient(to top, var(--accent2), var(--accent)); border-radius: 3px 3px 0 0; min-height: 2px; opacity: .85; }
+  .big { font-size: 44px; font-weight: 700; text-align: center; margin: -4px 0 6px; font-variant-numeric: tabular-nums; }
+  .big small { font-size: 16px; color: var(--dim); font-weight: 500; }
+  input[type=range] { width: 100%; -webkit-appearance: none; appearance: none; height: 34px; background: transparent; }
+  input[type=range]::-webkit-slider-runnable-track { height: 10px; border-radius: 5px; background: linear-gradient(90deg, var(--accent2), var(--accent)); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; margin-top: -10px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px #0008; }
+  input[type=range]::-moz-range-track { height: 10px; border-radius: 5px; background: linear-gradient(90deg, var(--accent2), var(--accent)); }
+  input[type=range]::-moz-range-thumb { width: 30px; height: 30px; border-radius: 50%; background: #fff; border: 0; }
+  .steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 6px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .rh { text-align: left; padding: 10px 12px; }
+  .rh b { display: block; font-size: 15px; } .rh span { font-size: 12px; color: var(--dim); }
+  .rh.active { border-color: var(--accent); background: #12332f; }
+  .row { display: flex; gap: 10px; align-items: center; margin: 10px 0; }
+  .row label { flex: 0 0 96px; font-size: 14px; color: var(--dim); }
+  .row input[type=text], .row input[type=number], .row select { flex: 1; min-width: 0;
+    background: #0b1115; border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; }
+  .log { font: 12px/1.4 ui-monospace, Menlo, monospace; color: var(--dim); background: #090e11; border-radius: 10px; padding: 8px; height: 260px; overflow: auto; white-space: pre-wrap; }
+  .note { font-size: 13px; color: var(--dim); }
+  .warnbox { background: #2d2310; border: 1px solid #5c4515; color: #ffd48a; border-radius: 14px; padding: 12px; font-size: 14px; margin-bottom: 14px; }
+  .hidden { display: none !important; }
+  .btnrow { display: flex; gap: 10px; margin-top: 10px; } .btnrow button { flex: 1; font-size: 15px; }
+  .auto { position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); max-width: 536px; margin: 0 auto;
+    background: #1c2a33; border: 1px solid var(--accent); border-radius: 18px; padding: 14px; box-shadow: 0 10px 30px #000a; z-index: 10; }
+  .auto p { margin: 0 0 10px; font-size: 15px; }
+  .auto .yes { background: var(--ok); color: #032; border: 0; font-weight: 700; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Link Lab</h1>
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">Not connected</span></div>
+  </header>
+
+  <div class="warnbox hidden" id="noBle">
+    This browser can't use Bluetooth. Use Chrome or Edge on a computer or Android phone.
+    On iPhone, open this page in the free <b>Bluefy</b> browser from the App Store.
+  </div>
+
+  <div class="card">
+    <button class="primary" id="connectBtn">Connect device</button>
+    <dl class="info hidden" id="info" style="margin-top:12px">
+      <dt>Name</dt><dd id="iName">–</dd>
+      <dt>Battery</dt><dd id="iBatt">–</dd>
+      <dt>Maker</dt><dd id="iMaker">–</dd>
+      <dt>Model</dt><dd id="iModel">–</dd>
+      <dt>Control</dt><dd id="iCtl">none picked</dd>
+    </dl>
+  </div>
+
+  <div class="tabs">
+    <button data-tab="control" class="on">Control</button>
+    <button data-tab="explore">Explore</button>
+    <button data-tab="log">Log</button>
+  </div>
+
+  <!-- CONTROL -->
+  <section id="tab-control">
+    <div class="card">
+      <h2>Level</h2>
+      <div class="meter" id="meter"></div>
+      <div class="big"><span id="levelOut">0</span><small>%</small></div>
+      <input type="range" id="speed" min="0" max="100" value="0">
+      <div class="steps">
+        <button data-s="0">0</button><button data-s="25">25</button><button data-s="50">50</button><button data-s="75">75</button><button data-s="100">100</button>
+      </div>
+    </div>
+    <button class="stop" id="stopBtn">STOP</button>
+    <div class="card" style="margin-top:14px">
+      <h2>Rhythm</h2>
+      <div class="grid" id="rhythms"></div>
+      <div class="row" style="margin-top:14px"><label>Tempo</label><input type="range" id="tempo" min="25" max="300" value="100"></div>
+    </div>
+    <div class="card">
+      <h2>Command format</h2>
+      <p class="note" style="margin-top:0">How a level gets turned into bytes for the device. Don't know? Connect, then tap <b>Find the right setting</b>.</p>
+      <div class="row"><label>Channel</label><select id="chanSel"><option value="">Connect first</option></select></div>
+      <div class="row"><label>Preset</label><select id="preset"><option value="custom">Custom</option></select></div>
+      <div class="row"><label>Template</label><input type="text" id="template" placeholder="e.g. {v}"></div>
+      <div class="row"><label>Max value</label><input type="number" id="maxv" min="1" max="65535"></div>
+      <div class="row"><label>Write mode</label>
+        <select id="wmode"><option value="auto">Auto</option><option value="resp">With response</option><option value="noresp">Without response</option></select>
+      </div>
+      <p class="note">Template is hex bytes. <code>{v}</code> = level as one byte (0 to max), <code>{v16}</code> = two bytes, <code>{sum}</code> = checksum of the bytes before it, <code>{chk}</code> = same but skipping the first byte, <code>{vt}</code> = level written as text digits. Start with <code>text:</code> to send plain text, e.g. <code>text:SET {v}</code></p>
+      <div class="btnrow"><button id="autoBtn">Find the right setting</button><button id="testBtn">Test 2s at 50%</button></div>
+    </div>
+  </section>
+
+  <!-- EXPLORE -->
+  <section id="tab-explore" class="hidden">
+    <div class="card">
+      <h2>Services &amp; channels</h2>
+      <p class="note" style="margin-top:0">Everything the device exposes. Read values, listen for replies, or send your own bytes. Tap <b>Use for control</b> on a channel to drive it from the Control tab.</p>
+      <div id="tree"><span class="note">Connect a device to see what it offers.</span></div>
+    </div>
+    <div class="card">
+      <h2>Missing a service?</h2>
+      <p class="note" style="margin-top:0">Browsers only show services they were told about up front. If the log says a device has none visible, add its service UUID here and reconnect.</p>
+      <div class="row"><label>Extra UUID</label><input type="text" id="extraSvc" placeholder="e.g. fff0 or full UUID"></div>
+    </div>
+  </section>
+
+  <!-- LOG -->
+  <section id="tab-log" class="hidden">
+    <div class="card">
+      <h2>Log</h2>
+      <div class="log" id="log"></div>
+      <div class="btnrow"><button id="copyBtn">Copy report</button><button id="clearBtn">Clear</button></div>
+      <p class="note">This page has no tracking and makes no network requests. Everything stays between this browser and the device.</p>
+    </div>
+  </section>
+</main>
+
+<div class="auto hidden" id="autoBox">
+  <p id="autoText">Testing…</p>
+  <div class="btnrow" style="margin-top:0"><button class="yes" id="autoYes">That worked</button><button id="autoStop">Stop test</button></div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('ll.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('ll.' + k, JSON.stringify(v)); } catch {} }
+  };
+
+  // ---------- log ----------
+  const logEl = $('log'), LOG = [];
+  const log = (...a) => {
+    const d = new Date(), ts = d.toTimeString().slice(0, 8) + '.' + String(d.getMilliseconds()).padStart(3, '0');
+    const line = ts + ' ' + a.join(' ');
+    LOG.push(line); if (LOG.length > 2000) LOG.shift();
+    logEl.textContent += line + '\n';
+    if (logEl.textContent.length > 80000) logEl.textContent = logEl.textContent.slice(-50000);
+    logEl.scrollTop = logEl.scrollHeight;
+  };
+  window.addEventListener('error', e => log('PAGE ERROR:', e.message, '@', e.lineno));
+  window.addEventListener('unhandledrejection', e => log('PAGE ERROR (promise):', errMsg(e.reason)));
+  const errMsg = e => e && e.message ? ((e.name && e.name !== 'Error' ? e.name + ': ' : '') + e.message) : String(e || 'unknown error');
+
+  // ---------- tabs ----------
+  document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+    ['control', 'explore', 'log'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
+  });
+
+  // ---------- bytes ----------
+  const hex = u8 => Array.from(u8, b => b.toString(16).padStart(2, '0')).join(' ');
+  const ascii = u8 => Array.from(u8, b => b >= 32 && b < 127 ? String.fromCharCode(b) : '.').join('');
+  function parseHex(s) {
+    const clean = s.replace(/0x/gi, '').replace(/[^0-9a-f]/gi, '');
+    if (clean.length % 2) throw new Error('odd number of hex digits');
+    const out = []; for (let i = 0; i < clean.length; i += 2) out.push(parseInt(clean.substr(i, 2), 16));
+    return new Uint8Array(out);
+  }
+
+  // ---------- UUIDs ----------
+  const full = u => {
+    if (typeof u === 'number') return `0000${u.toString(16).padStart(4, '0')}-0000-1000-8000-00805f9b34fb`;
+    u = String(u).trim().toLowerCase();
+    if (/^[0-9a-f]{4}$/.test(u)) return `0000${u}-0000-1000-8000-00805f9b34fb`;
+    if (/^[0-9a-f]{8}$/.test(u)) return `${u}-0000-1000-8000-00805f9b34fb`;
+    return u;
+  };
+  const short = u => { u = String(u).toLowerCase(); const m = u.match(/^0000([0-9a-f]{4})-0000-1000-8000-00805f9b34fb$/); return m ? m[1] : u; };
+  const KNOWN = {
+    '1800': 'Generic Access', '1801': 'Generic Attribute', '180a': 'Device Information', '180f': 'Battery',
+    '2a19': 'Battery Level', '2a29': 'Manufacturer', '2a24': 'Model Number', '2a25': 'Serial Number', '2a26': 'Firmware', '2a27': 'Hardware', '2a28': 'Software', '2a00': 'Device Name',
+    'fe59': 'Firmware update (DFU)', 'ffc0': 'Firmware update', '6e400001-b5a3-f393-e0a9-e50e24dcca9e': 'UART-style serial',
+    '6e400002-b5a3-f393-e0a9-e50e24dcca9e': 'Serial TX (write)', '6e400003-b5a3-f393-e0a9-e50e24dcca9e': 'Serial RX (replies)',
+  };
+  const label = u => KNOWN[short(u)] || '';
+  // Services we ask the browser for access to. Covers common generic modules and many consumer gadgets.
+  const COMMON_SERVICES = [
+    0x180a, 0x180f, 0xfff0, 0xffe0, 0xffe5, 0xffb0, 0xfee7, 0xfe95, 0xae00, 0xae30, 0xff00, 0xffa0, 0xfff5, 0xffd0,
+    0xff10, 0xff12, 0xffc0, 0xfe59, 0x1910, 0xfd00, 0xfee0, 0xfee9, 0xffff, 0xa002, 0xa000, 0xd0ff,
+    '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+    '0000fff0-0000-1000-8000-00805f9b34fb',
+    '53300001-0023-4bd4-bbd5-a6920e4c5653', '50300001-0024-4bd4-bbd5-a6920e4c5653',
+    '57300001-0023-4bd4-bbd5-a6920e4c5653', '5a300001-0023-4bd4-bbd5-a6920e4c5653',
+    '40ee1111-63ec-4b7f-8ce7-712efd55b90e', '0000ae00-0000-1000-8000-00805f9b34fb',
+    '49535343-fe7d-4ae5-8fa9-9fafd205e455', '0000180d-0000-1000-8000-00805f9b34fb',
+    'f000ffc0-0451-4000-b000-000000000000', '00001523-1212-efde-1523-785feabcd123',
+  ];
+  // Writing here can rename, misconfigure or brick a device. The explorer still allows it, but asks first.
+  const PROTECTED = ['1800', '1801', '180a', 'ff90', 'ffc0', 'fe59', 'f000ffc0-0451-4000-b000-000000000000'];
+
+  // ---------- presets ----------
+  const PRESETS = [
+    { id: 'byte255', name: 'Single byte 0–255', template: '{v}', max: 255 },
+    { id: 'byte100', name: 'Single byte 0–100', template: '{v}', max: 100 },
+    { id: 'byte20',  name: 'Single byte 0–20',  template: '{v}', max: 20 },
+    { id: 'txtcmd',  name: 'Text command A (0–20)', template: '56 69 62 72 61 74 65 3A {vt} 3B', max: 20 },
+    { id: 'txtnum',  name: 'Number as text (0–100)', template: 'text:{v}', max: 100 },
+    { id: 'cc03',    name: 'CC 03 + level + check', template: 'CC 03 {v} {chk}', max: 100 },
+    { id: 'aa04',    name: 'AA 04 + level + check', template: 'AA 04 {v} {chk}', max: 100 },
+    { id: 'aa03',    name: 'AA 03 + level + check', template: 'AA 03 {v} {chk}', max: 100 },
+    { id: 'aa01',    name: 'AA 01 + level', template: 'AA 01 {v}', max: 100 },
+    { id: 'a5',      name: 'A5 + level + checksum', template: 'A5 {v} {sum}', max: 100 },
+    { id: 'b01',     name: '01 + level', template: '01 {v}', max: 100 },
+    { id: 'b0x',     name: 'level + 00 (0–255)', template: '{v} 00', max: 255 },
+    { id: 'a001',    name: 'A0 01 + level (0–255)', template: 'A0 01 {v}', max: 255 },
+    { id: 'aa55',    name: 'AA 55 + level + 55 AA', template: 'AA 55 {v} 55 AA', max: 100 },
+    { id: 'v16',     name: 'Two-byte level (0–1000)', template: '{v16}', max: 1000 },
+  ];
+  const presetSel = $('preset');
+  PRESETS.forEach(p => presetSel.insertAdjacentHTML('beforeend', `<option value="${p.id}">${p.name}</option>`));
+
+  // Settings are kept per device (by its browser id), so each gadget remembers its own format.
+  const DEFAULT_CFG = { preset: 'byte255', template: '{v}', max: 255, wmode: 'auto', charKey: null };
+  let cfg = { ...DEFAULT_CFG };
+  const cfgKey = () => 'cfg.' + (device ? device.id : 'none');
+  const saveCfg = () => { if (device) store.set(cfgKey(), cfg); };
+  function showCfg() {
+    presetSel.value = PRESETS.some(p => p.id === cfg.preset) ? cfg.preset : 'custom';
+    $('template').value = cfg.template; $('maxv').value = cfg.max; $('wmode').value = cfg.wmode;
+  }
+  function applyPreset(p) { cfg.preset = p.id; cfg.template = p.template; cfg.max = p.max; showCfg(); lastSent = null; }
+  showCfg();
+  presetSel.onchange = () => { const p = PRESETS.find(x => x.id === presetSel.value); if (p) applyPreset(p); else cfg.preset = 'custom'; saveCfg(); };
+  $('template').oninput = e => { cfg.template = e.target.value; cfg.preset = 'custom'; presetSel.value = 'custom'; saveCfg(); lastSent = null; };
+  $('maxv').oninput = e => { cfg.max = Math.max(1, +e.target.value || 1); saveCfg(); lastSent = null; };
+  $('wmode').onchange = e => { cfg.wmode = e.target.value; saveCfg(); };
+  $('extraSvc').value = store.get('extraSvc', '');
+  $('extraSvc').onchange = e => store.set('extraSvc', e.target.value.trim());
+
+  function buildCommand(level01) {
+    const v = Math.round(Math.max(0, Math.min(1, level01)) * cfg.max);
+    const t = cfg.template.trim();
+    if (t.startsWith('text:')) return new TextEncoder().encode(t.slice(5).replace(/\{v\}/g, String(v)));
+    const bytes = [];
+    for (const tok of t.split(/\s+/).filter(Boolean)) {
+      if (tok === '{v}') bytes.push(v & 0xff);
+      else if (tok === '{v16}') bytes.push((v >> 8) & 0xff, v & 0xff);
+      else if (tok === '{vt}') bytes.push(...new TextEncoder().encode(String(v)));
+      else if (tok === '{sum}') bytes.push(bytes.reduce((a, b) => a + b, 0) & 0xff);
+      else if (tok === '{chk}') bytes.push(bytes.slice(1).reduce((a, b) => a + b, 0) & 0xff);
+      else bytes.push(...parseHex(tok));
+    }
+    return new Uint8Array(bytes);
+  }
+
+  // ---------- bluetooth ----------
+  let device = null, chars = [], target = null, lastSent = null;
+  if (!navigator.bluetooth) $('noBle').classList.remove('hidden');
+
+  function setStatus(on, text) {
+    $('dot').classList.toggle('on', on); $('statusText').textContent = text;
+    $('connectBtn').textContent = on ? 'Disconnect' : 'Connect device';
+  }
+
+  $('connectBtn').onclick = () => (device && device.gatt.connected) ? disconnect() : connect();
+
+  async function connect() {
+    if (!navigator.bluetooth) { alert('Bluetooth is not available in this browser. Use Chrome, or Bluefy on iPhone.'); return; }
+    const services = [...new Set(COMMON_SERVICES.map(full))];
+    const extra = store.get('extraSvc', '');
+    extra.split(/[\s,]+/).filter(Boolean).forEach(u => services.push(full(u)));
+    let picked;
+    try { picked = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: services }); }
+    catch (e) { log('Device picker closed:', errMsg(e)); return; }
+    device = picked;
+    cfg = { ...DEFAULT_CFG, ...store.get(cfgKey(), {}) }; showCfg();
+    device.addEventListener('gattserverdisconnected', onDisconnect);
+    setStatus(false, 'Connecting…');
+    try {
+      await device.gatt.connect();
+      log('Connected to', device.name || '(unnamed)', 'id', device.id);
+      await discover();
+      setStatus(true, device.name || 'Connected');
+    } catch (e) { log('Connect failed:', errMsg(e)); setStatus(false, 'Failed — try again'); }
+  }
+
+  async function disconnect() {
+    try { await sendLevel(0, true); } catch {}
+    try { device.gatt.disconnect(); } catch {}
+  }
+
+  function onDisconnect() {
+    setStatus(false, 'Disconnected'); target = null; chars = []; lastSent = null;
+    stopAuto(); log('Device disconnected'); renderChanSel(); renderInfo();
+  }
+
+  async function discover() {
+    chars = [];
+    const info = { batt: null, maker: null, model: null };
+    let svcs = [];
+    try { svcs = await device.gatt.getPrimaryServices(); } catch (e) { log('No accessible services:', errMsg(e)); }
+    for (const s of svcs) {
+      log('Service', s.uuid, label(s.uuid));
+      let cs = [];
+      try { cs = await s.getCharacteristics(); } catch (e) { log('  cannot list channels:', errMsg(e)); }
+      for (const c of cs) {
+        const p = c.properties;
+        const props = ['read', 'write', 'writeWithoutResponse', 'notify', 'indicate'].filter(k => p[k]);
+        const prot = PROTECTED.includes(short(s.uuid));
+        const x = { key: s.uuid + '/' + c.uuid, svc: s.uuid, c, props, prot, writable: !!(p.write || p.writeWithoutResponse), value: null, listening: false };
+        chars.push(x);
+        log('  channel', c.uuid, label(c.uuid), '[' + props.join(',') + ']');
+        if (p.read) {
+          const v = await readChar(x, true);
+          if (v) {
+            const sc = short(c.uuid);
+            if (sc === '2a19') info.batt = v[0] + '%';
+            if (sc === '2a29') info.maker = new TextDecoder().decode(v);
+            if (sc === '2a24') info.model = new TextDecoder().decode(v);
+          }
+        }
+        c.addEventListener('characteristicvaluechanged', ev => {
+          const v = new Uint8Array(ev.target.value.buffer);
+          x.value = v; log('←', short(c.uuid), hex(v), JSON.stringify(ascii(v)));
+          if (short(c.uuid) === '2a19') { $('iBatt').textContent = v[0] + '%'; }
+          paintValue(x);
+        });
+        // Listen on everything that can reply, so device responses show up in the log.
+        if (p.notify || p.indicate) await setListen(x, true);
+      }
+    }
+    log(`Found ${svcs.length} services, ${chars.length} channels`);
+    if (!svcs.length) log('No services visible. Add the device\'s service UUID under Explore → Missing a service, then reconnect.');
+    target = chars.find(x => x.key === cfg.charKey && x.writable)
+          || chars.find(x => x.writable && !x.prot && short(x.c.uuid) === '6e400002-b5a3-f393-e0a9-e50e24dcca9e')
+          || chars.find(x => x.writable && !x.prot && short(x.svc) !== '180f')
+          || null;
+    if (target) { cfg.charKey = target.key; saveCfg(); }
+    log(target ? 'Control channel: ' + target.c.uuid : 'Control channel: none found');
+    renderInfo(info); renderTree(); renderChanSel();
+  }
+
+  async function readChar(x, quiet) {
+    try {
+      const v = new Uint8Array((await x.c.readValue()).buffer);
+      x.value = v; log(quiet ? '    value' : 'Read ' + short(x.c.uuid) + ':', hex(v), JSON.stringify(ascii(v)));
+      paintValue(x); return v;
+    } catch (e) { log(quiet ? '    read failed:' : 'Read failed:', errMsg(e)); return null; }
+  }
+
+  async function setListen(x, on) {
+    try {
+      if (on) await x.c.startNotifications(); else await x.c.stopNotifications();
+      x.listening = on; log(on ? '    listening on' : 'Stopped listening on', short(x.c.uuid));
+    } catch (e) { log('    could not', on ? 'listen on' : 'stop', short(x.c.uuid) + ':', errMsg(e)); }
+    renderTree();
+  }
+
+  function renderInfo(info) {
+    const on = device && device.gatt.connected;
+    $('info').classList.toggle('hidden', !on);
+    if (!on) return;
+    $('iName').textContent = device.name || '(unnamed)';
+    if (info) { $('iBatt').textContent = info.batt || '–'; $('iMaker').textContent = info.maker || '–'; $('iModel').textContent = info.model || '–'; }
+    $('iCtl').textContent = target ? short(target.c.uuid) : 'none picked';
+  }
+
+  function renderChanSel() {
+    const sel = $('chanSel');
+    const w = chars.filter(x => x.writable);
+    sel.innerHTML = w.length ? '' : `<option value="">${device && device.gatt.connected ? 'No writable channels' : 'Connect first'}</option>`;
+    w.forEach(x => sel.insertAdjacentHTML('beforeend', `<option value="${x.key}">${short(x.c.uuid)}${label(x.c.uuid) ? ' · ' + label(x.c.uuid) : ''}${x.prot ? ' (protected)' : ''}</option>`));
+    if (target) sel.value = target.key;
+  }
+  $('chanSel').onchange = e => {
+    const x = chars.find(c => c.key === e.target.value);
+    if (x) useForControl(x);
+  };
+
+  function useForControl(x) {
+    if (x.prot && !confirm('This channel belongs to a settings or firmware service. Sending level commands there could change or break the device. Use it anyway?')) { renderChanSel(); return; }
+    target = x; cfg.charKey = x.key; saveCfg(); lastSent = null;
+    log('Control channel set to', x.c.uuid); renderChanSel(); renderTree(); renderInfo();
+  }
+
+  function renderTree() {
+    const tree = $('tree');
+    if (!chars.length) { tree.innerHTML = `<span class="note">${device && device.gatt.connected ? 'No channels visible. See "Missing a service?" below.' : 'Connect a device to see what it offers.'}</span>`; return; }
+    const open = new Set([...tree.querySelectorAll('details[open]')].map(d => d.dataset.svc));
+    const first = !tree.querySelector('details');
+    tree.innerHTML = '';
+    const bySvc = new Map();
+    chars.forEach(x => { if (!bySvc.has(x.svc)) bySvc.set(x.svc, []); bySvc.get(x.svc).push(x); });
+    for (const [svc, list] of bySvc) {
+      const d = document.createElement('details');
+      d.className = 'svc'; d.dataset.svc = svc;
+      if (open.has(svc) || (first && list.some(x => x.writable && !x.prot))) d.open = true;
+      const prot = PROTECTED.includes(short(svc));
+      d.innerHTML = `<summary><b>${short(svc)}</b>${label(svc) ? ' · ' + label(svc) : ''}${prot ? '<span class="tag prot">protected</span>' : ''}<span class="tag">${list.length}</span></summary>`;
+      list.forEach(x => d.appendChild(chrEl(x)));
+      tree.appendChild(d);
+    }
+  }
+
+  function chrEl(x) {
+    const el = document.createElement('div');
+    el.className = 'chr'; el.dataset.key = x.key;
+    el.innerHTML = `<div class="uuid">${x.c.uuid}${label(x.c.uuid) ? ' · ' + label(x.c.uuid) : ''}${x === target ? '<span class="tag ctl">control</span>' : ''}</div>
+      <div class="note">${x.props.join(', ')}</div>
+      <div class="val"></div>
+      <div class="acts"></div>`;
+    const acts = el.querySelector('.acts');
+    const btn = (t, fn) => { const b = document.createElement('button'); b.className = 'small'; b.textContent = t; b.onclick = fn; acts.appendChild(b); };
+    if (x.props.includes('read')) btn('Read', () => readChar(x));
+    if (x.props.includes('notify') || x.props.includes('indicate')) btn(x.listening ? 'Stop listening' : 'Listen', () => setListen(x, !x.listening));
+    if (x.writable && x !== target) btn('Use for control', () => useForControl(x));
+    if (x.writable) {
+      const wr = document.createElement('div'); wr.className = 'wr';
+      wr.innerHTML = `<select><option value="hex">hex</option><option value="text">text</option></select><input type="text" placeholder="AA 01 32"><button class="small">Send</button>`;
+      const [kind, inp, send] = wr.children;
+      const k = 'raw.' + x.key; inp.value = store.get(k, ''); kind.value = store.get(k + '.kind', 'hex');
+      kind.onchange = () => { inp.placeholder = kind.value === 'hex' ? 'AA 01 32' : 'SET 5'; store.set(k + '.kind', kind.value); };
+      kind.onchange();
+      send.onclick = async () => {
+        let u8;
+        try { u8 = kind.value === 'hex' ? parseHex(inp.value) : new TextEncoder().encode(inp.value); } catch (e) { log('Bad input:', errMsg(e)); return; }
+        if (!u8.length) return;
+        if (x.prot && !confirm('This channel is in a settings or firmware service. Writing here can rename or break the device. Send anyway?')) return;
+        store.set(k, inp.value);
+        try { await writeTo(x, u8, 'auto'); log('→', short(x.c.uuid), hex(u8)); } catch (e) { log('✗ write', short(x.c.uuid), 'failed:', errMsg(e)); }
+      };
+      el.appendChild(wr);
+    }
+    if (x.value) el.querySelector('.val').textContent = hex(x.value) + '  "' + ascii(x.value) + '"';
+    return el;
+  }
+
+  function paintValue(x) {
+    const el = document.querySelector(`.chr[data-key="${CSS.escape(x.key)}"] .val`);
+    if (el && x.value) el.textContent = hex(x.value) + '  "' + ascii(x.value) + '"';
+  }
+
+  // One GATT operation at a time; browsers reject overlapping writes.
+  let gattBusy = Promise.resolve();
+  function writeTo(x, u8, mode) {
+    const run = async () => {
+      const c = x.c, p = c.properties;
+      const noResp = mode === 'noresp' || (mode === 'auto' && p.writeWithoutResponse && !p.write);
+      const tries = noResp
+        ? [c.writeValueWithoutResponse, c.writeValue, c.writeValueWithResponse]
+        : [c.writeValueWithResponse, c.writeValue, c.writeValueWithoutResponse];
+      let last;
+      for (const fn of tries) { if (!fn) continue; try { return await fn.call(c, u8); } catch (e) { last = e; } }
+      throw last || new Error('no write method');
+    };
+    const job = gattBusy.then(run, run);
+    gattBusy = job.catch(() => {});
+    return job;
+  }
+
+  // Coalesce level writes: only the newest level is sent.
+  let pending = null, writing = false, lastLogT = 0, skipped = 0, lastErr = '', lastErrT = 0;
+  async function sendLevel(level01, force) {
+    if (!target || !device || !device.gatt.connected) return;
+    let cmd;
+    try { cmd = buildCommand(level01); } catch (e) { if (errMsg(e) !== lastErr) { log('Template error:', errMsg(e)); lastErr = errMsg(e); } return; }
+    const h = hex(cmd);
+    if (!force && h === lastSent) return;
+    pending = { cmd, h };
+    if (writing) return;
+    writing = true;
+    try {
+      while (pending) {
+        const job = pending; pending = null;
+        try {
+          await writeTo(target, job.cmd, cfg.wmode); lastSent = job.h;
+          const now = Date.now();
+          if (now - lastLogT > 400) { log('→ sent', job.h, skipped ? `(+${skipped} more)` : ''); lastLogT = now; skipped = 0; } else skipped++;
+        } catch (e) {
+          lastSent = null;
+          const m = errMsg(e);
+          if (m !== lastErr || Date.now() - lastErrT > 3000) { log('✗ send', job.h, 'failed:', m); lastErr = m; lastErrT = Date.now(); }
+        }
+      }
+    } finally { writing = false; }
+  }
+
+  // ---------- rhythms ----------
+  const tri = x => 1 - Math.abs((x % 1) * 2 - 1);
+  const RHYTHMS = [
+    { id: 'steady', name: 'Steady', d: 'Constant level', f: () => 1 },
+    { id: 'pulse', name: 'Pulse', d: 'On / off', f: t => (t % 1) < 0.5 ? 1 : 0 },
+    { id: 'wave', name: 'Wave', d: 'Smooth rise & fall', f: t => 0.5 - 0.5 * Math.cos(t * Math.PI) },
+    { id: 'heart', name: 'Heartbeat', d: 'Two beats, pause', f: t => { const x = t % 1.4; return (x < 0.18 || (x > 0.32 && x < 0.5)) ? 1 : 0.1; } },
+    { id: 'ramp', name: 'Ramp', d: 'Builds up, drops', f: t => (t / 4) % 1 },
+    { id: 'stairs', name: 'Stairs', d: '4 steps up', f: t => (Math.floor((t / 0.8) % 4) + 1) / 4 },
+    { id: 'zigzag', name: 'Zigzag', d: 'Sharp up & down', f: t => tri(t / 1.5) },
+    { id: 'random', name: 'Random', d: 'Unpredictable', f: (t, s) => { const k = Math.floor(t / 0.7); if (s.k !== k) { s.k = k; s.v = Math.random(); } return s.v; } },
+  ];
+  let rhythm = RHYTHMS.find(r => r.id === store.get('rhythm', 'steady')) || RHYTHMS[0];
+  const rState = {};
+  RHYTHMS.forEach(r => {
+    const b = document.createElement('button');
+    b.className = 'rh' + (r === rhythm ? ' active' : '');
+    b.innerHTML = `<b>${r.name}</b><span>${r.d}</span>`;
+    b.onclick = () => { rhythm = r; store.set('rhythm', r.id); document.querySelectorAll('.rh').forEach(x => x.classList.toggle('active', x === b)); t0 = performance.now(); };
+    $('rhythms').appendChild(b);
+  });
+
+  // ---------- main loop ----------
+  const speedEl = $('speed'), tempoEl = $('tempo');
+  tempoEl.value = store.get('tempo', 100);
+  tempoEl.oninput = () => store.set('tempo', +tempoEl.value);
+  let speed = 0, t0 = performance.now(), testing = false;
+  const setSpeed = pct => { speedEl.value = pct; speed = pct / 100; };
+  speedEl.oninput = () => { speed = +speedEl.value / 100; };
+  document.querySelectorAll('.steps button').forEach(b => b.onclick = () => setSpeed(+b.dataset.s));
+  const meter = $('meter'), BARS = 40, hist = new Array(BARS).fill(0);
+  for (let i = 0; i < BARS; i++) meter.appendChild(document.createElement('i'));
+  function paintMeter(level) {
+    hist.push(level); hist.shift();
+    for (let i = 0; i < BARS; i++) meter.children[i].style.height = Math.max(2, hist[i] * 100) + '%';
+    $('levelOut').textContent = Math.round(level * 100);
+  }
+  setInterval(() => {
+    if (testing) return;
+    const t = (performance.now() - t0) / 1000 * (+tempoEl.value / 100);
+    const level = speed <= 0 ? 0 : Math.max(0, Math.min(1, speed * rhythm.f(t, rState)));
+    paintMeter(level);
+    sendLevel(level);
+  }, 50);
+
+  function stopAll() { setSpeed(0); stopAuto(); lastSent = null; sendLevel(0, true); log('STOP'); }
+  $('stopBtn').onclick = stopAll;
+  // Stop when the page is hidden or closed, so nothing is left running.
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { setSpeed(0); sendLevel(0, true); } });
+  window.addEventListener('pagehide', () => sendLevel(0, true));
+
+  // ---------- test + auto-finder ----------
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  $('testBtn').onclick = async () => {
+    if (!target) { log('Test: connect and pick a channel first'); return; }
+    testing = true; log('Test: 2s at 50% with', cfg.template);
+    paintMeter(0.5); lastSent = null; await sendLevel(0.5, true);
+    await sleep(2000);
+    lastSent = null; await sendLevel(0, true); testing = false;
+  };
+
+  let autoRun = 0;
+  function stopAuto() { if (!autoRun) return; autoRun = 0; testing = false; $('autoBox').classList.add('hidden'); }
+  $('autoStop').onclick = () => { const saved = autoSaved; stopAuto(); if (saved) { cfg = saved; target = chars.find(x => x.key === cfg.charKey) || target; showCfg(); renderChanSel(); } lastSent = null; sendLevel(0, true); log('Auto-find stopped'); };
+  let autoHit = null, autoSaved = null;
+  $('autoYes').onclick = () => {
+    if (!autoHit) return;
+    const { x, p } = autoHit;
+    target = x; cfg.charKey = x.key; applyPreset(p); saveCfg();
+    log('Saved: channel', short(x.c.uuid), 'format', p.name);
+    autoSaved = null; stopAuto(); lastSent = null; sendLevel(0, true);
+    renderChanSel(); renderTree(); renderInfo();
+  };
+  $('autoBtn').onclick = async () => {
+    if (!device || !device.gatt.connected) { alert('Connect a device first.'); return; }
+    const cands = chars.filter(x => x.writable && !x.prot && short(x.svc) !== '180f');
+    if (!cands.length) { alert('No safe writable channels found. Check the Explore tab.'); return; }
+    // Current channel first, then the rest.
+    cands.sort((a, b) => (b === target) - (a === target));
+    const run = ++autoRun; testing = true; autoSaved = { ...cfg };
+    $('autoBox').classList.remove('hidden');
+    log(`Auto-find: ${cands.length} channel(s) × ${PRESETS.length} formats`);
+    const total = cands.length * PRESETS.length; let n = 0;
+    for (const x of cands) for (const p of PRESETS) {
+      if (autoRun !== run) return;
+      n++; autoHit = { x, p };
+      $('autoText').innerHTML = `Trying ${n} of ${total}: <b>${p.name}</b> on channel <b>${short(x.c.uuid)}</b>.<br><span class="note">Tap “That worked” as soon as the device reacts.</span>`;
+      const prev = { ...cfg }; cfg.template = p.template; cfg.max = p.max;
+      const prevTarget = target; target = x;
+      try {
+        paintMeter(0.4); lastSent = null; await sendLevel(0.4, true);
+        await sleep(1800);
+        if (autoRun !== run) return;
+        lastSent = null; await sendLevel(0, true);
+      } finally { if (autoRun === run) { cfg = prev; target = prevTarget; } }
+      await sleep(500);
+    }
+    if (autoRun === run) { stopAuto(); log('Auto-find: nothing confirmed. Copy the report from the Log tab to dig further.'); alert('Went through every format. Nothing confirmed. The log has details.'); }
+  };
+
+  // ---------- log buttons ----------
+  $('copyBtn').onclick = async () => {
+    const head = [
+      'Link Lab report', new Date().toISOString(), navigator.userAgent,
+      'Device: ' + (device ? (device.name || '(unnamed)') : 'none'),
+      'Control: ' + (target ? target.c.uuid : 'none') + ' · template ' + cfg.template + ' · max ' + cfg.max + ' · mode ' + cfg.wmode, '',
+    ].join('\n');
+    const text = head + LOG.join('\n');
+    try { await navigator.clipboard.writeText(text); alert('Report copied.'); }
+    catch { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); alert('Report copied.'); }
+  };
+  $('clearBtn').onclick = () => { LOG.length = 0; logEl.textContent = ''; };
+
+  log('Ready.', navigator.bluetooth ? 'Bluetooth available.' : 'Bluetooth NOT available in this browser.');
+})();
+</script>
+</body>
+</html>
