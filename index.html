@@ -380,7 +380,7 @@
     if (scan) { stopScan(); return; }
     $('scanBox').classList.remove('hidden');
     if (!navigator.bluetooth || !navigator.bluetooth.requestLEScan) {
-      $('scanNote').textContent = 'This browser can\'t list signal strength. The device picker sorts itself, so use the on/off test: note the list with the device off, then on.';
+      $('scanNote').innerHTML = 'This browser doesn\'t let web pages see signal strength, so this list can\'t be sorted here.<br><br>To find your device: install the free <b>nRF Connect</b> app, hold your phone next to the device and open its Scanner. The strongest signal (closest to 0, like -45) is your device. Type that name into <b>Only show</b> above.<br><br>Or try the on/off test: open Connect with the device off, then on, and see which name appears.';
       $('scanList').innerHTML = ''; return;
     }
     seen.clear(); $('scanNote').textContent = 'Scanning… hold the phone next to the device. Strongest signal is on top. Tap one to connect.';
