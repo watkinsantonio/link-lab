@@ -166,7 +166,7 @@
 
 <div class="auto hidden" id="autoBox">
   <p id="autoText">Testing…</p>
-  <div class="btnrow" style="margin-top:0"><button class="yes" id="autoYes">That worked</button><button id="autoStop">Stop test</button></div>
+  <div class="btnrow" style="margin-top:0"><button class="yes" id="autoYes">That worked</button><button id="autoSkip">Next channel</button><button id="autoStop">Stop test</button></div>
 </div>
 
 <script>
@@ -255,6 +255,40 @@
     { id: 'a001',    name: 'A0 01 + level (0–255)', template: 'A0 01 {v}', max: 255 },
     { id: 'aa55',    name: 'AA 55 + level + 55 AA', template: 'AA 55 {v} 55 AA', max: 100 },
     { id: 'v16',     name: 'Two-byte level (0–1000)', template: '{v16}', max: 1000 },
+    // Formats used by other consumer Bluetooth gadgets (from a public open-source device database).
+    { id: 'f1',      name: 'F1 + level (0–127)', template: 'F1 {v}', max: 127 },
+    { id: 'f101',    name: 'F1 01 + level + 00', template: 'F1 01 {v} 00', max: 128 },
+    { id: 'c0201',   name: '02 01 + level + 00 (0–5)', template: '02 01 {v} 00', max: 5 },
+    { id: 'b003',    name: 'B0 03 … level AA', template: 'B0 03 00 00 00 {v} AA', max: 255 },
+    { id: 'u5504a',  name: '55 04 01 … level AA', template: '55 04 01 00 00 {v} AA', max: 255 },
+    { id: 'u5504b',  name: '55 04 00 … level (0–10)', template: '55 04 00 00 00 {v}', max: 10 },
+    { id: 'u5504c',  name: '55 04 07 FF FF 3F …', template: '55 04 07 FF FF 3F {v} 5F {v} 00', max: 100 },
+    { id: 'c0301',   name: '03 01 01 FE + level (0–3)', template: '03 01 01 FE {v}', max: 3 },
+    { id: 'a001b',   name: 'A0 01 00 00 level FF (0–3)', template: 'A0 01 00 00 {v} FF', max: 3 },
+    { id: 'a003a',   name: 'A0 03 level 00 00 00 AA', template: 'A0 03 {v} 00 00 00 AA', max: 255 },
+    { id: 'a003b',   name: 'A0 03 level 00 00 00 00 AA', template: 'A0 03 {v} 00 00 00 00 AA', max: 255 },
+    { id: 'a00c',    name: 'A0 0C 00 00 64 + level', template: 'A0 0C 00 00 64 {v}', max: 255 },
+    { id: 'c00ff',   name: '00 FF 00 00 00 + level', template: '00 FF 00 00 00 {v}', max: 100 },
+    { id: 'c02',     name: '02 + level (0–25)', template: '02 {v}', max: 25 },
+    { id: 'c02aa',   name: '02 AA BB CC CC + level', template: '02 AA BB CC CC {v}', max: 100 },
+    { id: 'f300',    name: 'F3 00 + level (0–121)', template: 'F3 00 {v}', max: 121 },
+    { id: 'm10ff',   name: '10 FF 04 0A 32 0A … (long)', template: '10 FF 04 0A 32 0A 00 04 08 {v} 64 00 04 08 {v} 64 01', max: 100 },
+    { id: 'm0bff',   name: '0B FF 04 0A 32 32 … (long)', template: '0B FF 04 0A 32 32 00 04 08 {v} 64 00', max: 100 },
+    { id: 'aa5506a', name: 'AA 55 06 01 01 01 level FA', template: 'AA 55 06 01 01 01 {v} FA', max: 3 },
+    { id: 'aa5506b', name: 'AA 55 06 01 01 01 level FF', template: 'AA 55 06 01 01 01 {v} FF', max: 3 },
+    { id: 'c0180',   name: '01 80 01 + level (0–10)', template: '01 80 01 {v}', max: 10 },
+    { id: 'c6996a',  name: '69 96 03 01 01 + level', template: '69 96 03 01 01 {v}', max: 68 },
+    { id: 'c6996b',  name: '69 96 04 02 level 2C level', template: '69 96 04 02 {v} 2C {v}', max: 68 },
+    { id: 'aa0101',  name: 'AA 01 01 00 01 + level', template: 'AA 01 01 00 01 {v}', max: 10 },
+    { id: 'a10404',  name: 'A1 04 04 01 level FF 55', template: 'A1 04 04 01 {v} FF 55', max: 100 },
+    { id: 'c00',     name: '00 + level (0–3)', template: '00 {v}', max: 3 },
+    { id: 'aa0301',  name: 'AA 03 01 01 64 + level', template: 'AA 03 01 01 64 {v}', max: 20 },
+    { id: 'a104',    name: 'A1 04 level 01 (0–20)', template: 'A1 04 {v} 01', max: 20 },
+    { id: 'bb01',    name: 'BB 01 level 66', template: 'BB 01 {v} 66', max: 99 },
+    { id: 'aa0303',  name: 'AA 03 03 level 00 00 00', template: 'AA 03 03 {v} 00 00 00', max: 100 },
+    { id: 'aa0207',  name: 'AA 02 07 + level (0–9)', template: 'AA 02 07 {v}', max: 9 },
+    { id: 'c030200', name: '03 02 00 + level (0–10)', template: '03 02 00 {v}', max: 10 },
+    { id: 'c0f03',   name: '0F 03 00 level 00 03 00 00', template: '0F 03 00 {vn} 00 03 00 00', max: 15 },
   ];
   const presetSel = $('preset');
   PRESETS.forEach(p => presetSel.insertAdjacentHTML('beforeend', `<option value="${p.id}">${p.name}</option>`));
@@ -286,6 +320,7 @@
       if (tok === '{v}') bytes.push(v & 0xff);
       else if (tok === '{v16}') bytes.push((v >> 8) & 0xff, v & 0xff);
       else if (tok === '{vt}') bytes.push(...new TextEncoder().encode(String(v)));
+      else if (tok === '{vn}') bytes.push(((v & 0x0f) << 4) | (v & 0x0f));
       else if (tok === '{sum}') bytes.push(bytes.reduce((a, b) => a + b, 0) & 0xff);
       else if (tok === '{chk}') bytes.push(bytes.slice(1).reduce((a, b) => a + b, 0) & 0xff);
       else bytes.push(...parseHex(tok));
@@ -589,7 +624,8 @@
   let autoRun = 0;
   function stopAuto() { if (!autoRun) return; autoRun = 0; testing = false; $('autoBox').classList.add('hidden'); }
   $('autoStop').onclick = () => { const saved = autoSaved; stopAuto(); if (saved) { cfg = saved; target = chars.find(x => x.key === cfg.charKey) || target; showCfg(); renderChanSel(); } lastSent = null; sendLevel(0, true); log('Auto-find stopped'); };
-  let autoHit = null, autoSaved = null;
+  let autoHit = null, autoSaved = null, skipChan = false;
+  $('autoSkip').onclick = () => { skipChan = true; log('Auto-find: skipping to next channel'); };
   $('autoYes').onclick = () => {
     if (!autoHit) return;
     const { x, p } = autoHit;
@@ -608,20 +644,23 @@
     $('autoBox').classList.remove('hidden');
     log(`Auto-find: ${cands.length} channel(s) × ${PRESETS.length} formats`);
     const total = cands.length * PRESETS.length; let n = 0;
-    for (const x of cands) for (const p of PRESETS) {
+    for (const x of cands) { skipChan = false; let i = 0; for (const p of PRESETS) {
       if (autoRun !== run) return;
-      n++; autoHit = { x, p };
-      $('autoText').innerHTML = `Trying ${n} of ${total}: <b>${p.name}</b> on channel <b>${short(x.c.uuid)}</b>.<br><span class="note">Tap “That worked” as soon as the device reacts.</span>`;
+      i++; n++;
+      if (skipChan) continue;
+      autoHit = { x, p };
+      $('autoText').innerHTML = `Channel <b>${short(x.c.uuid)}</b> · format ${i} of ${PRESETS.length} (${n} of ${total} overall)<br><b>${p.name}</b><br><span class="note">Tap “That worked” as soon as the device reacts.</span>`;
+      log(`auto ${n} ${short(x.c.uuid)} ${p.id}`);
       const prev = { ...cfg }; cfg.template = p.template; cfg.max = p.max;
       const prevTarget = target; target = x;
       try {
-        paintMeter(0.4); lastSent = null; await sendLevel(0.4, true);
-        await sleep(1800);
+        paintMeter(0.6); lastSent = null; await sendLevel(0.6, true);
+        await sleep(1300);
         if (autoRun !== run) return;
         lastSent = null; await sendLevel(0, true);
       } finally { if (autoRun === run) { cfg = prev; target = prevTarget; } }
-      await sleep(500);
-    }
+      await sleep(300);
+    } }
     if (autoRun === run) { stopAuto(); log('Auto-find: nothing confirmed. Copy the report from the Log tab to dig further.'); alert('Went through every format. Nothing confirmed. The log has details.'); }
   };
 
