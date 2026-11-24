@@ -818,7 +818,14 @@
     const summary = `Probe done: ${sent} sent, ${hits.size} got a reply.`;
     $('pNow').textContent = summary; pOut.textContent += '\n' + summary + '\n';
     log(summary);
-    for (const [k, set] of hits) log('  reply to', k, '→', [...set].join(' | '));
+    // Group by reply so 256 identical answers show as one line instead of 256.
+    const byReply = new Map();
+    for (const [k, set] of hits) { const r = [...set].join(' | '); if (!byReply.has(r)) byReply.set(r, []); byReply.get(r).push(k); }
+    for (const [r, ks] of byReply) {
+      const line = ks.length === sent ? `  same reply to ALL ${ks.length}: ${r}` : `  ${ks.length} got: ${r}  ← from ${ks.length > 6 ? ks.slice(0, 6).join(', ') + ' …' : ks.join(', ')}`;
+      log(line); pOut.textContent += line + '\n';
+    }
+    if (byReply.size === 1 && hits.size === sent && sent > 1) log('  (identical reply every time, so the swept byte made no difference)');
   };
 
   // ---------- log buttons ----------
